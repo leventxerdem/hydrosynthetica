@@ -1,0 +1,72 @@
+:root {
+  --ink-950: #070c13;
+  --ink-900: #0b131f;
+  --ink-800: #101b2b;
+  --panel: #121e30;
+  --panel-raised: #17273c;
+  --border: #21344c;
+  --border-soft: #1a2942;
+
+  --text-hi: #eaf1f8;
+  --text-mid: #b7c5d6;
+  --text-low: #6d8099;
+
+  --flow: #35d6c4;
+  --flow-dim: #1c5f59;
+  --accum: #e2933f;
+  --accum-dim: #6a4a24;
+  --danger: #e2593f;
+  --sediment: #4a5f7d;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ink-950);
+  color: var(--text-hi);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--flow-dim);
+  color: var(--text-hi);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollpane {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+a {
+  color: var(--flow);
+}
+
+:focus-visible {
+  outline: 2px solid var(--flow);
+  outline-offset: 2px;
+}

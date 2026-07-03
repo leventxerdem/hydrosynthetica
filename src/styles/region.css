@@ -1,0 +1,157 @@
+.region-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.region-map-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.region-map {
+  position: absolute;
+  inset: 0;
+  background: var(--ink-900);
+}
+
+.leaflet-container {
+  background: var(--ink-900);
+  font-family: var(--font-display);
+}
+
+.map-style-picker {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 500;
+}
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  background: rgba(7, 12, 19, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-overlay-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 22px 30px;
+  text-align: center;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--flow);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.overlay-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.overlay-sub {
+  font-size: 11px;
+  color: var(--text-low);
+  margin-top: 4px;
+}
+
+.map-toast {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  background: rgba(226, 89, 63, 0.92);
+  color: white;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  max-width: 80%;
+  text-align: center;
+}
+
+.region-controls {
+  flex-shrink: 0;
+  background: var(--ink-900);
+  border-top: 1px solid var(--border-soft);
+  padding: 14px 20px 16px;
+}
+
+.region-controls-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.region-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.region-coord {
+  font-size: 11.5px;
+  color: var(--text-low);
+  margin-top: 3px;
+}
+
+.region-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.region-controls-bottom {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-top: 12px;
+  flex-wrap: wrap;
+}
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 10.5px;
+  color: var(--text-low);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hint-warning {
+  font-size: 12px;
+  color: var(--accum);
+  font-weight: 500;
+}
+
+.spacer {
+  flex: 1;
+}
