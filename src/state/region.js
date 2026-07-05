@@ -24,6 +24,9 @@ export function createRegion() {
     minLon: 0,
     maxLon: 0,
     pixelsPerMeter: 1,
+    _projOffsetX: 0,
+    _projOffsetY: 0,
+    _projMPerDegLon: 0,
   }
 }
 
@@ -68,6 +71,9 @@ export function normalizeToSimulationSpace(region) {
   region.minLon = minLon
   region.maxLon = maxLon
   region.pixelsPerMeter = ppm
+  region._projOffsetX = offsetX
+  region._projOffsetY = offsetY
+  region._projMPerDegLon = mPerDegLon
   region.waterVerticesSim = region.waterVertices.map((v) => project(v.lat, v.lng))
 
   const eLat = region.emissionLat ?? (minLat + maxLat) / 2
@@ -75,4 +81,15 @@ export function normalizeToSimulationSpace(region) {
   region.emissionPointSim = project(eLat, eLon)
 
   return region
+}
+
+// Inverse of the projection above — turns an {x, y} simulation-space point
+// (e.g. an accumulation hotspot found by the collector-placement grid) back
+// into a real {lat, lng} the passive collector could actually be deployed at.
+export function simToLatLng(region, point) {
+  const ppm = region.pixelsPerMeter || 1
+  const mPerDegLon = region._projMPerDegLon || metersPerDegLon((region.minLat + region.maxLat) / 2)
+  const lng = region.minLon + (point.x - region._projOffsetX) / (mPerDegLon * ppm)
+  const lat = region.maxLat - (point.y - region._projOffsetY) / (METERS_PER_DEG_LAT * ppm)
+  return { lat, lng }
 }

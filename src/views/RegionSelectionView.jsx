@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
 import { createRegion, normalizeToSimulationSpace } from '../state/region.js'
 import { detectWaterBody, WaterServiceError } from '../state/waterBoundaryService.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
 import '../styles/region.css'
 
 const TILE_LAYERS = {
@@ -16,6 +17,7 @@ const TILE_LAYERS = {
 }
 
 export default function RegionSelectionView({ project, updateProject }) {
+  const { t } = useI18n()
   const mapElRef = useRef(null)
   const mapRef = useRef(null)
   const tileRef = useRef(null)
@@ -117,29 +119,30 @@ export default function RegionSelectionView({ project, updateProject }) {
     }
   }, [waterVertices, emissionPoint])
 
-  const runAutoDetect = useCallback(async (lat, lng) => {
-    setIsDetecting(true)
-    setErrorMessage(null)
-    try {
-      const polygon = await detectWaterBody(lat, lng)
-      setWaterVertices(polygon)
-      setEmissionPoint({ lat, lng })
-    } catch (err) {
-      setErrorMessage(
-        err instanceof WaterServiceError
-          ? 'Detection failed: try clicking closer to the center of a water body.'
-          : 'Detection failed: network error reaching OpenStreetMap.'
-      )
-      console.error('Water detection error:', err)
-    } finally {
-      setIsDetecting(false)
-    }
-  }, [])
+  const runAutoDetect = useCallback(
+    async (lat, lng) => {
+      setIsDetecting(true)
+      setErrorMessage(null)
+      try {
+        const polygon = await detectWaterBody(lat, lng)
+        setWaterVertices(polygon)
+        setEmissionPoint({ lat, lng })
+      } catch (err) {
+        setErrorMessage(
+          err instanceof WaterServiceError ? t('region.detectFailNoWater') : t('region.detectFailNetwork')
+        )
+        console.error('Water detection error:', err)
+      } finally {
+        setIsDetecting(false)
+      }
+    },
+    [t]
+  )
 
   useEffect(() => {
     if (!errorMessage) return
-    const t = setTimeout(() => setErrorMessage(null), 3500)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setErrorMessage(null), 3500)
+    return () => clearTimeout(timer)
   }, [errorMessage])
 
   const clearAll = () => {
@@ -167,8 +170,8 @@ export default function RegionSelectionView({ project, updateProject }) {
           <div className="map-overlay">
             <div className="map-overlay-card">
               <div className="spinner" />
-              <div className="overlay-title">Detecting Water Body…</div>
-              <div className="overlay-sub mono">Querying OpenStreetMap</div>
+              <div className="overlay-title">{t('region.detecting')}</div>
+              <div className="overlay-sub mono">{t('region.detectingSub')}</div>
             </div>
           </div>
         )}
@@ -178,10 +181,10 @@ export default function RegionSelectionView({ project, updateProject }) {
         <div className="map-style-picker">
           <div className="segmented">
             <button className={mapStyle === 'standard' ? 'active' : ''} onClick={() => setMapStyle('standard')}>
-              Map
+              {t('region.mapStyleStandard')}
             </button>
             <button className={mapStyle === 'satellite' ? 'active' : ''} onClick={() => setMapStyle('satellite')}>
-              Satellite
+              {t('region.mapStyleSatellite')}
             </button>
           </div>
         </div>
@@ -190,42 +193,38 @@ export default function RegionSelectionView({ project, updateProject }) {
       <div className="region-controls">
         <div className="region-controls-top">
           <div>
-            <div className="region-title">Region Selection</div>
+            <div className="region-title">{t('region.title')}</div>
             {lastClick ? (
               <div className="mono region-coord">
                 {lastClick.lat.toFixed(4)}, {lastClick.lng.toFixed(4)}
               </div>
             ) : (
-              <div className="region-coord">Click the map to add water-body vertices</div>
+              <div className="region-coord">{t('region.clickHint')}</div>
             )}
           </div>
           <div className="region-actions">
             <button
               className={`btn ${isMagicMode ? 'btn-accent' : ''}`}
               onClick={() => setIsMagicMode((v) => !v)}
-              title="Automatically detect water boundaries using OpenStreetMap"
+              title={t('region.autoDetectHelp')}
             >
-              ✨ Auto-Detect
+              ✨ {t('region.autoDetect')}
             </button>
             <div className="btn-divider" />
-            <button
-              className="btn"
-              onClick={clearAll}
-              disabled={!waterVertices.length && !emissionPoint}
-            >
-              🗑 Clear
+            <button className="btn" onClick={clearAll} disabled={!waterVertices.length && !emissionPoint}>
+              🗑 {t('region.clear')}
             </button>
           </div>
         </div>
 
         <div className="region-controls-bottom">
           <div className="stat-block">
-            <div className="stat-label">Vertices</div>
+            <div className="stat-label">{t('region.vertices')}</div>
             <div className="stat-value mono">{waterVertices.length}</div>
           </div>
 
           <div className="stat-block">
-            <div className="stat-label">Flow Direction</div>
+            <div className="stat-label">{t('region.flowDirection')}</div>
             <div className="stat-value mono">↑ {Math.round(flowDirection)}°</div>
           </div>
           <input
@@ -240,7 +239,7 @@ export default function RegionSelectionView({ project, updateProject }) {
           {emissionPoint ? (
             <>
               <div className="stat-block">
-                <div className="stat-label">Emission Radius</div>
+                <div className="stat-label">{t('region.emissionRadius')}</div>
                 <div className="stat-value mono">{Math.round(emissionRadius)} m</div>
               </div>
               <input
@@ -253,12 +252,12 @@ export default function RegionSelectionView({ project, updateProject }) {
               />
             </>
           ) : (
-            <div className="hint-warning">⚠ Alt/Option + Click for emission point</div>
+            <div className="hint-warning">⚠ {t('region.emissionHint')}</div>
           )}
 
           <div className="spacer" />
           <button className="btn btn-accent" onClick={applyRegion} disabled={waterVertices.length < 3}>
-            ✓ Apply Region
+            ✓ {t('region.apply')}
           </button>
         </div>
       </div>

@@ -1,45 +1,61 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useProject } from './state/ProjectContext.jsx'
 import { useController } from './physics/hooks.js'
 import { controller } from './physics/controller.js'
+import { useI18n } from './i18n/I18nContext.jsx'
 import RegionSelectionView from './views/RegionSelectionView.jsx'
 import SimulationParameterView from './views/SimulationParameterView.jsx'
 import ParticleSettingsView from './views/ParticleSettingsView.jsx'
 import SimulationRendererView from './views/SimulationRendererView.jsx'
 import AnalysisView from './views/AnalysisView.jsx'
+import CollectorPlacementView from './views/CollectorPlacementView.jsx'
+import OnboardingTour from './components/OnboardingTour.jsx'
+import SettingsModal from './components/SettingsModal.jsx'
 import './styles/app.css'
 
-const SECTIONS = [
-  {
-    group: 'Region & Map',
-    items: [{ id: 'region', label: 'Select Region', icon: IconMap }],
-  },
-  {
-    group: 'Simulation Setup',
-    items: [
-      { id: 'parameters', label: 'Physical Parameters', icon: IconSliders },
-      { id: 'particles', label: 'Particle Settings', icon: IconGrid },
-    ],
-  },
-  {
-    group: 'Run Simulation',
-    items: [{ id: 'simulation', label: 'Simulation Renderer', icon: IconPlay }],
-  },
-  {
-    group: 'Analysis',
-    items: [{ id: 'analysis', label: 'Charts & Heatmaps', icon: IconChart }],
-  },
-]
+const ONBOARDING_KEY = 'hydrosynthetica.hasSeenOnboarding'
+
+function useSections(t) {
+  return [
+    { group: t('nav.groupRegion'), items: [{ id: 'region', label: t('nav.region'), icon: IconMap }] },
+    {
+      group: t('nav.groupSetup'),
+      items: [
+        { id: 'parameters', label: t('nav.parameters'), icon: IconSliders },
+        { id: 'particles', label: t('nav.particles'), icon: IconGrid },
+      ],
+    },
+    { group: t('nav.groupRun'), items: [{ id: 'simulation', label: t('nav.simulation'), icon: IconPlay }] },
+    { group: t('nav.groupAnalysis'), items: [{ id: 'analysis', label: t('nav.analysis'), icon: IconChart }] },
+    { group: t('nav.groupDeploy'), items: [{ id: 'collector', label: t('nav.collector'), icon: IconCollector }] },
+  ]
+}
 
 export default function App() {
+  const { t } = useI18n()
   const [section, setSection] = useState('region')
   const { project, updateProject, isDirty, saveToFile, loadFromFile, resetProject } = useProject()
   const ctrl = useController()
   const fileInputRef = useRef(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(ONBOARDING_KEY)) {
+        setShowOnboarding(true)
+        localStorage.setItem(ONBOARDING_KEY, '1')
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }, [])
+
+  const SECTIONS = useSections(t)
 
   const handleReset = () => {
     controller.stop()
-    if (confirm('Reset the current project? Region, parameters and results will be cleared.')) {
+    if (confirm(t('toolbar.resetConfirm'))) {
       resetProject()
     }
   }
@@ -50,13 +66,21 @@ export default function App() {
     e.target.value = ''
   }
 
+  const handleClearData = () => {
+    if (confirm(t('toolbar.resetConfirm'))) {
+      controller.stop()
+      resetProject()
+      setShowSettings(false)
+    }
+  }
+
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark" />
           <div>
-            <div className="brand-title">HydroSynthetica</div>
+            <div className="brand-title">{t('appName')}</div>
             <div className="brand-sub mono">{project.name}</div>
           </div>
         </div>
@@ -79,13 +103,14 @@ export default function App() {
           ))}
         </nav>
 
+        <button className="nav-item settings-nav-item" onClick={() => setShowSettings(true)}>
+          <IconGear />
+          <span>{t('toolbar.settings')}</span>
+        </button>
+
         <div className="sidebar-foot mono">
-          {ctrl.isRunning ? (
-            <span className="status-dot running" />
-          ) : (
-            <span className="status-dot idle" />
-          )}
-          {ctrl.isRunning ? 'Simulation running' : 'Idle'}
+          {ctrl.isRunning ? <span className="status-dot running" /> : <span className="status-dot idle" />}
+          {ctrl.isRunning ? t('status.running') : t('status.idle')}
         </div>
       </aside>
 
@@ -96,41 +121,48 @@ export default function App() {
             {isDirty && <span className="dirty-dot" title="Unsaved changes" />}
           </div>
           <div className="toolbar-actions">
-            <button className="btn" onClick={handleReset} title="Reset project">
-              <IconReset /> Reset
+            <button className="btn" onClick={handleReset} title={t('toolbar.reset')}>
+              <IconReset /> {t('toolbar.reset')}
             </button>
             <button
               className="btn"
               onClick={() => (ctrl.isRunning ? controller.stop() : controller.start(project))}
-              title={ctrl.isRunning ? 'Pause' : 'Run'}
+              title={ctrl.isRunning ? t('toolbar.pause') : t('toolbar.run')}
             >
-              {ctrl.isRunning ? <IconPause /> : <IconPlay />} {ctrl.isRunning ? 'Pause' : 'Run'}
+              {ctrl.isRunning ? <IconPause /> : <IconPlay />} {ctrl.isRunning ? t('toolbar.pause') : t('toolbar.run')}
             </button>
             <div className="btn-divider" />
-            <button className="btn" onClick={() => fileInputRef.current?.click()} title="Open project">
-              <IconFolder /> Open
+            <button className="btn" onClick={() => fileInputRef.current?.click()} title={t('toolbar.open')}>
+              <IconFolder /> {t('toolbar.open')}
             </button>
             <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleOpen} />
-            <button className="btn btn-accent" onClick={saveToFile} title="Save project">
-              <IconSave /> Save
+            <button className="btn btn-accent" onClick={saveToFile} title={t('toolbar.save')}>
+              <IconSave /> {t('toolbar.save')}
             </button>
           </div>
         </header>
 
         <main className="content">
-          {section === 'region' && (
-            <RegionSelectionView project={project} updateProject={updateProject} />
-          )}
-          {section === 'parameters' && (
-            <SimulationParameterView project={project} updateProject={updateProject} />
-          )}
-          {section === 'particles' && (
-            <ParticleSettingsView project={project} updateProject={updateProject} />
-          )}
+          {section === 'region' && <RegionSelectionView project={project} updateProject={updateProject} />}
+          {section === 'parameters' && <SimulationParameterView project={project} updateProject={updateProject} />}
+          {section === 'particles' && <ParticleSettingsView project={project} updateProject={updateProject} />}
           {section === 'simulation' && <SimulationRendererView project={project} />}
-          {section === 'analysis' && <AnalysisView />}
+          {section === 'analysis' && <AnalysisView project={project} />}
+          {section === 'collector' && <CollectorPlacementView project={project} />}
         </main>
       </div>
+
+      {showOnboarding && <OnboardingTour onDismiss={() => setShowOnboarding(false)} />}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onReplayTour={() => {
+            setShowSettings(false)
+            setShowOnboarding(true)
+          }}
+          onClearData={handleClearData}
+        />
+      )}
     </div>
   )
 }
@@ -179,6 +211,23 @@ function IconChart() {
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M4 19V5M4 19h16" strokeLinecap="round" />
       <path d="M7 15l3.5-4L14 14l4-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+function IconCollector() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3c2.5 1.5 2.5 3.5 0 5s-2.5 3.5 0 5 2.5 3.5 0 5" strokeLinecap="round" />
+      <circle cx="12" cy="3" r="1.4" fill="currentColor" stroke="none" />
+      <path d="M12 18v3" strokeLinecap="round" />
+    </svg>
+  )
+}
+function IconGear() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 13a7.97 7.97 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a8 8 0 0 0-1.7-1L14.8 3h-4l-.5 2.9a8 8 0 0 0-1.7 1l-2.5-1-2 3.5L6.2 11a7.97 7.97 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a8 8 0 0 0 1.7 1l.5 2.9h4l.5-2.9a8 8 0 0 0 1.7-1l2.5 1 2-3.5-2.1-1.6Z" strokeLinejoin="round" />
     </svg>
   )
 }

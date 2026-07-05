@@ -150,3 +150,54 @@ select {
 .stepper button:hover {
   border-color: var(--flow);
 }
+
+.polymer-row {
+  align-items: center;
+}
+
+.polymer-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.polymer-chip {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  position: relative;
+}
+
+.polymer-chip::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.polymer-chip.sinks::after {
+  background: var(--accum);
+}
+
+.polymer-chip.floats::after {
+  background: var(--flow);
+}
+
+.polymer-chip.near-neutral::after {
+  background: var(--sediment);
+}
+
+.polymer-chip.active {
+  border-color: var(--flow);
+  color: var(--text-hi);
+  background: var(--flow-dim);
+}

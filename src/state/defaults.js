@@ -30,6 +30,7 @@ export function createProject(name = 'Untitled Project') {
     region: null,
     parameters: createParameters(),
     particleSettings: createParticleSettings(),
+    collector: null, // { simPoint: {x,y}, latLng: {lat,lng}, confidence, totalAccumulated, computedAtTime }
   }
 }
 

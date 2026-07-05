@@ -1,5 +1,9 @@
-import React from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useDataStore } from '../physics/hooks.js'
+import { useController } from '../physics/hooks.js'
+import { controller } from '../physics/controller.js'
+import { computeAccumulationGrid } from '../physics/accumulationGrid.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
 import '../styles/analysis.css'
 
 function MetricCard({ title, value, accent }) {
@@ -13,14 +17,14 @@ function MetricCard({ title, value, accent }) {
   )
 }
 
-function AccumulationChart({ history }) {
-  if (!history.length) return <ChartPlaceholder text="Run simulation to gather data" />
+function AccumulationChart({ history, t }) {
+  if (!history.length) return <ChartPlaceholder text={t('analysis.runToGather')} />
 
   const W = 640, H = 220, PAD = 32
   const maxT = history[history.length - 1].time || 1
   const maxCount = Math.max(1, ...history.map((h) => h.stuckCount))
 
-  const x = (t) => PAD + (t / maxT) * (W - PAD * 2)
+  const x = (time) => PAD + (time / maxT) * (W - PAD * 2)
   const y = (c) => H - PAD - (c / maxCount) * (H - PAD * 2)
 
   const linePath = history.map((h, i) => `${i === 0 ? 'M' : 'L'} ${x(h.time)} ${y(h.stuckCount)}`).join(' ')
@@ -49,8 +53,8 @@ function AccumulationChart({ history }) {
   )
 }
 
-function SpeedHistogram({ buckets }) {
-  if (!buckets.length) return <ChartPlaceholder text="No data" />
+function SpeedHistogram({ buckets, t }) {
+  if (!buckets.length) return <ChartPlaceholder text={t('analysis.noData')} />
 
   const W = 640, H = 220, PAD = 32
   const maxCount = Math.max(1, ...buckets.map((b) => b.count))
@@ -80,8 +84,92 @@ function ChartPlaceholder({ text }) {
   return <div className="chart-placeholder">{text}</div>
 }
 
-export default function AnalysisView() {
+function HeatMapCanvas({ grid, region }) {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+
+    if (!grid || !region?.waterVerticesSim?.length) return
+
+    const { bounds } = grid
+    const bw = Math.max(1, bounds.maxX - bounds.minX)
+    const bh = Math.max(1, bounds.maxY - bounds.minY)
+    const fit = Math.min(w / bw, h / bh)
+    const offX = (w - bw * fit) / 2
+    const offY = (h - bh * fit) / 2
+
+    const toScreen = (p) => ({ x: (p.x - bounds.minX) * fit + offX, y: (p.y - bounds.minY) * fit + offY })
+
+    // Water outline for context
+    ctx.beginPath()
+    const verts = region.waterVerticesSim
+    const first = toScreen(verts[0])
+    ctx.moveTo(first.x, first.y)
+    for (const v of verts.slice(1)) {
+      const s = toScreen(v)
+      ctx.lineTo(s.x, s.y)
+    }
+    ctx.closePath()
+    ctx.fillStyle = 'rgba(53,150,214,0.06)'
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(53,150,214,0.5)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    ctx.save()
+    ctx.clip()
+
+    // Density cells
+    const cellScreenSize = grid.cellPx * fit
+    for (let cy = 0; cy < grid.rows; cy++) {
+      for (let cx = 0; cx < grid.cols; cx++) {
+        const count = grid.counts[cy * grid.cols + cx]
+        if (count <= 0) continue
+        const t = Math.min(1, count / Math.max(1, grid.maxCount))
+        const x = bounds.minX + cx * grid.cellPx
+        const y = bounds.minY + cy * grid.cellPx
+        const s = toScreen({ x, y })
+        const alpha = 0.15 + t * 0.75
+        const hue = 45 - t * 45 // amber (low) -> red (high), matches accumulation-danger palette
+        ctx.fillStyle = `hsla(${hue}, 85%, ${58 - t * 12}%, ${alpha})`
+        ctx.fillRect(s.x, s.y, cellScreenSize + 0.5, cellScreenSize + 0.5)
+      }
+    }
+    ctx.restore()
+  }, [grid, region])
+
+  return <canvas ref={canvasRef} className="heatmap-canvas" />
+}
+
+export default function AnalysisView({ project }) {
+  const { t } = useI18n()
   const dataStore = useDataStore()
+  const ctrl = useController()
+  const [grid, setGrid] = useState(null)
+
+  const recompute = useCallback(() => {
+    if (!project.region) return
+    setGrid(computeAccumulationGrid(controller.displayParticles, project.region))
+  }, [project.region])
+
+  useEffect(() => {
+    recompute()
+  }, [recompute])
+
+  useEffect(() => {
+    if (!ctrl.isRunning) return
+    const interval = setInterval(recompute, 1000)
+    return () => clearInterval(interval)
+  }, [ctrl.isRunning, recompute])
 
   const exportCSV = () => {
     const csv = dataStore.generateCSV()
@@ -98,29 +186,66 @@ export default function AnalysisView() {
     <div className="view-pad analysis-pad">
       <div className="analysis-export">
         <button className="btn" onClick={exportCSV}>
-          ⬆ Export CSV
+          ⬆ {t('analysis.exportCsv')}
         </button>
       </div>
 
       <div className="metric-grid">
-        <MetricCard title="Total Particles" value={dataStore.totalParticles} />
-        <MetricCard title="Accumulated" value={dataStore.stuckParticles} accent="#e2933f" />
-        <MetricCard title="Active Flow" value={dataStore.activeParticles} accent="#35d6c4" />
-        <MetricCard title="Avg Speed (Active)" value={`${dataStore.activeAverageSpeed.toFixed(1)} px/s`} />
-        <MetricCard title="Max Speed" value={`${dataStore.maxSpeed.toFixed(1)} px/s`} accent="#e2593f" />
+        <MetricCard title={t('analysis.totalParticles')} value={dataStore.totalParticles} />
+        <MetricCard title={t('analysis.accumulated')} value={dataStore.stuckParticles} accent="#e2933f" />
+        <MetricCard title={t('analysis.activeFlow')} value={dataStore.activeParticles} accent="#35d6c4" />
+        <MetricCard title={t('analysis.avgSpeed')} value={`${dataStore.activeAverageSpeed.toFixed(1)} px/s`} />
+        <MetricCard title={t('analysis.maxSpeed')} value={`${dataStore.maxSpeed.toFixed(1)} px/s`} accent="#e2593f" />
       </div>
 
       <div className="panel">
-        <div className="panel-title">Accumulation Timeline</div>
+        <div className="panel-title">{t('analysis.accumulationTimeline')}</div>
         <div className="chart-wrap">
-          <AccumulationChart history={dataStore.history} />
+          <AccumulationChart history={dataStore.history} t={t} />
         </div>
       </div>
 
       <div className="panel">
-        <div className="panel-title">Velocity Distribution</div>
+        <div className="panel-title">{t('analysis.velocityDistribution')}</div>
         <div className="chart-wrap">
-          <SpeedHistogram buckets={dataStore.speedBuckets} />
+          <SpeedHistogram buckets={dataStore.speedBuckets} t={t} />
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-title">{t('analysis.heatMap')}</div>
+        <div className="heatmap-body">
+          <p className="heatmap-sub">{t('analysis.heatMapSub')}</p>
+
+          {!project.region ? (
+            <ChartPlaceholder text={t('collector.noRegion')} />
+          ) : !grid || grid.totalAccumulated === 0 ? (
+            <ChartPlaceholder text={t('analysis.runToGather')} />
+          ) : (
+            <>
+              <div className="heatmap-canvas-wrap">
+                <HeatMapCanvas grid={grid} region={project.region} />
+              </div>
+              <div className="heatmap-stats">
+                <div>
+                  <span className="stat-label">{t('analysis.cellSize')}</span>{' '}
+                  <span className="mono">{grid.cellMeters} m</span>
+                </div>
+                <div>
+                  <span className="stat-label">{t('analysis.peakDensity')}</span>{' '}
+                  <span className="mono">
+                    {grid.maxCount} {t('analysis.particlesPerCell')}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="heatmap-actions">
+            <button className="btn" onClick={recompute}>
+              {t('analysis.recompute')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

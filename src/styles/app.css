@@ -96,6 +96,10 @@
   opacity: 0.85;
 }
 
+.settings-nav-item {
+  margin: 4px 0 2px;
+}
+
 .sidebar-foot {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { controller } from '../physics/controller.js'
 import { useController } from '../physics/hooks.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
 import '../styles/renderer.css'
 
 const SIM_W = 800
@@ -8,13 +9,13 @@ const SIM_H = 600
 const SPEED_OPTIONS = [1, 10, 60, 300]
 
 function speedColor(depthRatio) {
-  // Bright cyan at surface -> deep ink blue at max depth (mirrors the Swift HSB ramp)
   const h = 190, s = 70
   const l = 55 - depthRatio * 34
   return `hsl(${h} ${s}% ${l}%)`
 }
 
 export default function SimulationRendererView({ project }) {
+  const { t } = useI18n()
   const canvasRef = useRef(null)
   const wrapRef = useRef(null)
   const rafRef = useRef(null)
@@ -45,7 +46,6 @@ export default function SimulationRendererView({ project }) {
       ctx.fillStyle = '#0b131f'
       ctx.fillRect(0, 0, w, h)
 
-      // fit sim space (800x600) into the canvas, then apply user zoom/pan
       const fit = Math.min(w / SIM_W, h / SIM_H)
       const scale = fit * zoom
       const baseOffsetX = (w - SIM_W * scale) / 2
@@ -92,8 +92,8 @@ export default function SimulationRendererView({ project }) {
         } else if (colorMode === 0) {
           color = p.isSedimented ? '#3a4f68' : '#35d6c4'
         } else if (colorMode === 1) {
-          const t = Math.min(1, p.speed / 40)
-          color = `hsl(${190 - t * 150} 75% ${58 - t * 10}%)`
+          const tt = Math.min(1, p.speed / 40)
+          color = `hsl(${190 - tt * 150} 75% ${58 - tt * 10}%)`
         } else {
           const depthRatio = Math.min(1, Math.max(0, p.z / maxDepth))
           color = p.isSedimented ? 'hsl(216 70% 14%)' : speedColor(depthRatio)
@@ -118,13 +118,36 @@ export default function SimulationRendererView({ project }) {
         }
       }
 
+      // Collector placement marker, if computed
+      if (project.collector?.simPoint) {
+        const cp = toScreen(project.collector.simPoint)
+        ctx.save()
+        ctx.strokeStyle = '#e2933f'
+        ctx.fillStyle = 'rgba(226,147,63,0.18)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(cp.x, cp.y, 14, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(cp.x - 6, cp.y)
+        ctx.lineTo(cp.x + 6, cp.y)
+        ctx.moveTo(cp.x, cp.y - 6)
+        ctx.lineTo(cp.x, cp.y + 6)
+        ctx.stroke()
+        ctx.font = '600 11px "Space Grotesk", sans-serif'
+        ctx.fillStyle = '#e2933f'
+        ctx.fillText(t('renderer.collector'), cp.x + 18, cp.y + 4)
+        ctx.restore()
+      }
+
       rafRef.current = requestAnimationFrame(draw)
     }
 
     rafRef.current = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(rafRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, zoom, offset, showVectors])
+  }, [project, zoom, offset, showVectors, t])
 
   const onPointerDown = (e) => {
     dragState.current = { startX: e.clientX, startY: e.clientY, origin: offset }
@@ -157,14 +180,8 @@ export default function SimulationRendererView({ project }) {
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         />
-        {ctrl.isRunning && (
-          <div className="renderer-clock mono">⏱ {formatTime(ctrl.currentTime)}</div>
-        )}
-        {!canRun && (
-          <div className="renderer-empty">
-            Define a water region (≥3 vertices) before running the simulation.
-          </div>
-        )}
+        {ctrl.isRunning && <div className="renderer-clock mono">⏱ {formatTime(ctrl.currentTime)}</div>}
+        {!canRun && <div className="renderer-empty">{t('renderer.emptyState')}</div>}
       </div>
 
       <div className="renderer-controls">
@@ -207,7 +224,7 @@ export default function SimulationRendererView({ project }) {
 
         <label className="toggle-label">
           <input type="checkbox" checked={showVectors} onChange={(e) => setShowVectors(e.target.checked)} />
-          Vectors
+          {t('renderer.vectors')}
         </label>
       </div>
     </div>
