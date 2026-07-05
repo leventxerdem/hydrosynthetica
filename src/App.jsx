@@ -78,12 +78,9 @@ export default function App() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark" />
-          <div>
-            <div className="brand-title">{t('appName')}</div>
-            <div className="brand-sub mono">{project.name}</div>
-          </div>
-        </div>
+          <img src="https://hydrosynthetica.app/image_0.png" alt="" className="brand-mark" />
+        <div className="brand-title">{t('appName')}</div>
+    </div>
 
         <nav className="nav">
           {SECTIONS.map((g) => (

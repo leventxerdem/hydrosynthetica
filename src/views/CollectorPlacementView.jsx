@@ -7,16 +7,17 @@ import { useProject } from '../state/ProjectContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import '../styles/collector.css'
 
-export default function CollectorPlacementView({ project }) {
+export default function CollectorPlacementView() {
   const { t } = useI18n()
-  const { updateProject } = useProject()
+  // FIX: Pull project directly from context to ensure instant reactive updates
+  const { project, updateProject } = useProject() 
   const [copied, setCopied] = useState(false)
   const mapElRef = useRef(null)
   const mapRef = useRef(null)
   const layerRef = useRef(null)
 
-  const region = project.region
-  const collector = project.collector
+  const region = project?.region
+  const collector = project?.collector
 
   const compute = () => {
     if (!region?.waterVerticesSim?.length) return
@@ -37,25 +38,36 @@ export default function CollectorPlacementView({ project }) {
     }))
   }
 
-  // Preview map
-  useEffect(() => {
-    if (!mapElRef.current || mapRef.current) return
-    const map = L.map(mapElRef.current, { zoomControl: true, attributionControl: false })
-    mapRef.current = map
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-    }).addTo(map)
-    map.setView([39, 35], 4)
-    return () => map.remove()
-  }, [])
+  // Preview map initialization
+useEffect(() => {
+  if (!mapElRef.current || mapRef.current) return
+  const map = L.map(mapElRef.current, { zoomControl: true, attributionControl: false })
+  mapRef.current = map
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+  }).addTo(map)
+  map.setView([39, 35], 4)
 
+  requestAnimationFrame(() => map.invalidateSize())
+  const resizeObserver = new ResizeObserver(() => map.invalidateSize())
+  resizeObserver.observe(mapElRef.current)
+
+  return () => {
+    resizeObserver.disconnect()
+    map.remove()
+  }
+}, [])
+
+  // Manage Layers and View Updates
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+
     if (layerRef.current) {
       map.removeLayer(layerRef.current)
       layerRef.current = null
     }
+    
     const group = L.layerGroup().addTo(map)
     layerRef.current = group
 

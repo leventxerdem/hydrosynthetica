@@ -41,8 +41,14 @@ export default function RegionSelectionView({ project, updateProject }) {
   const isMagicModeRef = useRef(isMagicMode)
   isMagicModeRef.current = isMagicMode
 
+  
+
+  
   // --- init map once ---
   useEffect(() => {
+    requestAnimationFrame(() => map.invalidateSize())
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize())
+    resizeObserver.observe(mapElRef.current)
     const map = L.map(mapElRef.current, {
       center: [39.0, 35.0],
       zoom: 6,
@@ -62,7 +68,10 @@ export default function RegionSelectionView({ project, updateProject }) {
       }
     })
 
-    return () => map.remove()
+    return () => {
+      resizeObserver.disconnect()
+      map.remove()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

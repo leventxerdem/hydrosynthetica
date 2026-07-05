@@ -7,25 +7,30 @@
 .collector-body {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 320px;
+  display: flex;
   gap: 16px;
   padding: 0 32px 28px;
 }
 
 .collector-map-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border-soft);
 }
 
 .collector-map {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   background: var(--ink-900);
 }
 
 .collector-panel {
+  width: 320px;
+  flex-shrink: 0;
   background: var(--panel);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
@@ -33,7 +38,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  align-self: start;
+  align-self: stretch;
+  overflow-y: auto;
 }
 
 .collector-empty {
